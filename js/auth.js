@@ -44,12 +44,13 @@ function setCurrentUser(user) {
         return;
     }
     
-    // Store only necessary fields (no password)
+    // Store all necessary fields including token
     const sessionData = {
         id: user.id,
         username: user.username,
         role: user.role,
-        status: user.status
+        status: user.status,
+        token: user.token || null
     };
     
     localStorage.setItem(SESSION_KEY, JSON.stringify(sessionData));
