@@ -2,6 +2,12 @@
 // No module-specific functions
 
 // ============================================
+// BACKEND CONFIGURATION
+// ============================================
+const BASE_URL = 'https://script.google.com/macros/s/AKfycbzRtOhNfBA7EAn-_prsrHRYeSpbfcdVG8F-w9HOsyLd667f8Ka4KP6M-y9u08Q8Jp3nNg/exec';
+const USE_BACKEND = true;  // Set to false to use mock data for testing
+
+// ============================================
 // MOCK DATA STORE (for testing without backend)
 // ============================================
 const mockDataStore = {
@@ -121,9 +127,42 @@ function unauthorizedResponse(action) {
  * Generic API request function
  * @param {string} action - The action name to execute
  * @param {object} payload - The data payload for the request
- * @returns {Promise<object>} Mocked response (no real backend yet)
+ * @returns {Promise<object>} Response from backend or mock
  */
 async function request(action, payload = {}) {
+    // Use real backend if enabled
+    if (USE_BACKEND) {
+        try {
+            // Get auth token from session
+            const session = getSession();
+            const token = session?.token || null;
+            
+            const response = await fetch(BASE_URL, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'text/plain',  // Required for CORS with GAS
+                },
+                body: JSON.stringify({
+                    action: action,
+                    payload: payload,
+                    token: token
+                })
+            });
+            
+            const result = await response.json();
+            return result;
+        } catch (error) {
+            console.error('Backend request failed:', error);
+            return {
+                success: false,
+                action: action,
+                data: null,
+                message: 'Network error: ' + error.message
+            };
+        }
+    }
+    
+    // Fall through to mock data for testing
     // Simulate network delay
     await new Promise(resolve => setTimeout(resolve, 100));
 
