@@ -1,0 +1,127 @@
+/**
+ * Al-Aqsa HRM Backend - Day Labor Handler
+ * Operations for day labor tracking
+ */
+
+/**
+ * Get day labor records (filtered by date)
+ */
+function handleGetDayLabor(payload, sessionUser) {
+  // Permission check
+  if (!checkPermission(sessionUser.role, 'DayLabor', 'canView')) {
+    return unauthorizedResponse('getDayLabor');
+  }
+  
+  try {
+    let records = getSheetData(SHEETS.DAY_LABOR);
+    
+    // Filter by date if provided
+    if (payload.date) {
+      records = records.filter(r => r.date === payload.date);
+    }
+    
+    return {
+      success: true,
+      action: 'getDayLabor',
+      data: records,
+      message: 'Day labor records retrieved'
+    };
+  } catch (error) {
+    return {
+      success: false,
+      action: 'getDayLabor',
+      data: null,
+      message: 'Error retrieving day labor: ' + error.toString()
+    };
+  }
+}
+
+/**
+ * Add day labor record
+ */
+function handleAddDayLabor(payload, sessionUser) {
+  // Permission check
+  if (!checkPermission(sessionUser.role, 'DayLabor', 'canAdd')) {
+    return unauthorizedResponse('addDayLabor');
+  }
+  
+  try {
+    // Validate required fields
+    const requiredFields = ['id', 'date', 'employeeName'];
+    const validationError = validateRequired(payload, requiredFields);
+    if (validationError) {
+      return {
+        success: false,
+        action: 'addDayLabor',
+        data: null,
+        message: validationError
+      };
+    }
+    
+    // Prepare record data
+    const recordData = {
+      id: payload.id,
+      date: payload.date,
+      employeeId: payload.employeeId || '',
+      employeeName: payload.employeeName,
+      clientId: payload.clientId || '',
+      clientName: payload.clientName || '',
+      hoursWorked: parseNumber(payload.hoursWorked, 0),
+      notes: payload.notes || ''
+    };
+    
+    // Add record
+    addRecord(SHEETS.DAY_LABOR, recordData);
+    
+    return {
+      success: true,
+      action: 'addDayLabor',
+      data: recordData,
+      message: 'Day labor record added'
+    };
+  } catch (error) {
+    return {
+      success: false,
+      action: 'addDayLabor',
+      data: null,
+      message: 'Error adding day labor: ' + error.toString()
+    };
+  }
+}
+
+/**
+ * Delete day labor record
+ */
+function handleDeleteDayLabor(payload, sessionUser) {
+  // Permission check
+  if (!checkPermission(sessionUser.role, 'DayLabor', 'canDelete')) {
+    return unauthorizedResponse('deleteDayLabor');
+  }
+  
+  try {
+    const deleted = deleteRecord(SHEETS.DAY_LABOR, payload.id);
+    
+    if (!deleted) {
+      return {
+        success: false,
+        action: 'deleteDayLabor',
+        data: null,
+        message: 'Day labor record not found'
+      };
+    }
+    
+    return {
+      success: true,
+      action: 'deleteDayLabor',
+      data: null,
+      message: 'Day labor record deleted'
+    };
+  } catch (error) {
+    return {
+      success: false,
+      action: 'deleteDayLabor',
+      data: null,
+      message: 'Error deleting day labor: ' + error.toString()
+    };
+  }
+}
