@@ -16,8 +16,8 @@
 
 // These will be set after running setupDatabase()
 const CONFIG = {
-  SPREADSHEET_ID: '', // Set this after creating the spreadsheet
-  DRIVE_FOLDER_ID: '', // Set this after creating the uploads folder
+  SPREADSHEET_ID: '1FmeAC39Sqcl0Jy68pYKRtFLGFD9DDSfNhUzwLNk4sYE',
+  DRIVE_FOLDER_ID: '1H8SeClS6GW_g4pn6EqZUekKQdkVvUYT_',
   DEFAULT_DAILY_RATE: 500  // Default rate for salary calculations
 };
 
