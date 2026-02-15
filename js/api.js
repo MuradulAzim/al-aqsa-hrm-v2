@@ -134,7 +134,7 @@ async function request(action, payload = {}) {
     if (USE_BACKEND) {
         try {
             // Get auth token from session
-            const session = getSession();
+            const session = getSessionUser();
             const token = session?.token || null;
             
             const response = await fetch(BASE_URL, {
