@@ -5,3 +5,7 @@ node_modules/
 .DS_Store
 Thumbs.db
 .clasp.json
+input.css
+tailwind.config.js
+package.json
+package-lock.json
