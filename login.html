@@ -87,14 +87,19 @@
             loginBtn.textContent = 'Signing in...';
             
             try {
-                const success = await login(username, password);
-                if (success) {
+                const response = await login(username, password);
+                // Check if login was successful (response.success property, not truthy check)
+                if (response && response.success) {
+                    // Ensure session is stored before redirecting
+                    // Small delay to ensure localStorage is committed
+                    await new Promise(resolve => setTimeout(resolve, 100));
                     window.location.href = 'dashboard.html';
                 } else {
-                    errorDiv.textContent = 'Invalid username or password';
+                    errorDiv.textContent = response?.message || 'Invalid username or password';
                     errorDiv.classList.remove('hidden');
                 }
             } catch (error) {
+                console.error('Login error:', error);
                 errorDiv.textContent = 'An error occurred. Please try again.';
                 errorDiv.classList.remove('hidden');
             } finally {
