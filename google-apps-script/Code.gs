@@ -16,8 +16,8 @@
 
 // These will be set after running setupDatabase()
 const CONFIG = {
-  SPREADSHEET_ID: '1D-NzMvp4U2cQkSmcGSmqsYL3nNIH2tQpbIQ4gtUO31Y',
-  DRIVE_FOLDER_ID: '1mpzIwtyok-0yvL7R2E8-7JVoM-phOjma',
+  SPREADSHEET_ID: '1vI2YMvuXHbF4tKbw6Bi-Z7X_nYCnUaZaj5bWglTdAlU',
+  DRIVE_FOLDER_ID: '1pqa5gEMF2bppYpxDMLHSbeALNAvQkNNo',
   DEFAULT_DAILY_RATE: 500  // Default rate for salary calculations
 };
 
