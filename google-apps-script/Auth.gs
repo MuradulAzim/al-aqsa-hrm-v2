@@ -6,6 +6,7 @@
 // Simple token store (in-memory for Apps Script)
 // Note: In production, consider using CacheService for better persistence
 const TOKEN_EXPIRY_HOURS = 24;
+const MAX_TOKENS = 100; // Safety cap to prevent token accumulation
 
 /**
  * Generate session token
@@ -17,6 +18,14 @@ function generateToken(userId) {
   
   // Store token in PropertiesService
   const tokenStore = PropertiesService.getScriptProperties();
+  
+  // Safety cap: Prune oldest tokens if we're at the limit
+  const tokenCount = countTokens();
+  if (tokenCount >= MAX_TOKENS) {
+    Logger.log('Token limit reached (' + MAX_TOKENS + '), pruning oldest tokens');
+    pruneOldestTokens(10); // Remove 10 oldest tokens
+  }
+  
   const tokenData = {
     userId: userId,
     createdAt: timestamp,
@@ -25,6 +34,57 @@ function generateToken(userId) {
   tokenStore.setProperty('token_' + token, JSON.stringify(tokenData));
   
   return token;
+}
+
+/**
+ * Count active tokens
+ */
+function countTokens() {
+  const tokenStore = PropertiesService.getScriptProperties();
+  const allProperties = tokenStore.getProperties();
+  let count = 0;
+  
+  Object.keys(allProperties).forEach(key => {
+    if (key.startsWith('token_')) {
+      count++;
+    }
+  });
+  
+  return count;
+}
+
+/**
+ * Prune oldest tokens to prevent accumulation
+ */
+function pruneOldestTokens(count) {
+  const tokenStore = PropertiesService.getScriptProperties();
+  const allProperties = tokenStore.getProperties();
+  const tokens = [];
+  
+  // Collect all tokens with their creation time
+  Object.keys(allProperties).forEach(key => {
+    if (key.startsWith('token_')) {
+      try {
+        const tokenData = JSON.parse(allProperties[key]);
+        tokens.push({ key: key, createdAt: tokenData.createdAt });
+      } catch (e) {
+        // Invalid token, remove it
+        tokenStore.deleteProperty(key);
+      }
+    }
+  });
+  
+  // Sort by creation time (oldest first)
+  tokens.sort((a, b) => a.createdAt - b.createdAt);
+  
+  // Remove the oldest 'count' tokens
+  const toRemove = tokens.slice(0, count);
+  toRemove.forEach(t => {
+    tokenStore.deleteProperty(t.key);
+    Logger.log('Pruned token: ' + t.key);
+  });
+  
+  return toRemove.length;
 }
 
 /**
@@ -199,4 +259,27 @@ function cleanupExpiredTokens() {
     Logger.log('Token cleanup error: ' + error.toString());
     return 0;
   }
+}
+
+/**
+ * Install token cleanup trigger (run once to set up)
+ * This creates a daily trigger to clean up expired tokens
+ */
+function installTokenCleanupTrigger() {
+  // Delete any existing triggers first
+  const triggers = ScriptApp.getProjectTriggers();
+  triggers.forEach(trigger => {
+    if (trigger.getHandlerFunction() === 'cleanupExpiredTokens') {
+      ScriptApp.deleteTrigger(trigger);
+    }
+  });
+  
+  // Create new daily trigger
+  ScriptApp.newTrigger('cleanupExpiredTokens')
+    .timeBased()
+    .everyDays(1)
+    .create();
+  
+  Logger.log('Token cleanup trigger installed - will run daily');
+  return 'Token cleanup trigger installed';
 }

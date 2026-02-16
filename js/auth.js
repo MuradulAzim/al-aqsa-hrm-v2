@@ -104,25 +104,39 @@ async function login(username, password) {
             };
         }
         
+        // Use improved error message handling
         return {
             success: false,
-            message: response.message || 'Invalid username or password'
+            message: getErrorMessage(response)
         };
     } catch (error) {
         console.error('Login error:', error);
         return {
             success: false,
-            message: 'An error occurred during login'
+            message: 'An error occurred during login. Please try again.'
         };
     }
 }
 
 /**
  * Logout current user
+ * CORRECTED: Now calls backend logout endpoint before clearing localStorage
  */
-function logout() {
-    clearSession();
-    window.location.href = 'login.html';
+async function logout() {
+    try {
+        // Get token from session
+        const session = getSessionUser();
+        if (session && session.token) {
+            // Call backend logout to invalidate token
+            await request('logout', { token: session.token });
+        }
+    } catch (error) {
+        console.error('Backend logout error (continuing anyway):', error);
+    } finally {
+        // Always clear local session
+        clearSession();
+        window.location.href = 'login.html';
+    }
 }
 
 /**

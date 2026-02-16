@@ -9,8 +9,36 @@
 
 /**
  * Run this once to set up the database spreadsheet and Drive folder
+ * SAFE: Checks if resources already exist before creating new ones
  */
 function setupDatabase() {
+  // Check if config already exists in PropertiesService
+  const scriptProps = PropertiesService.getScriptProperties();
+  const existingConfig = scriptProps.getProperty('APP_CONFIG');
+  
+  if (existingConfig) {
+    const config = JSON.parse(existingConfig);
+    
+    // Verify existing spreadsheet still exists
+    try {
+      const ss = SpreadsheetApp.openById(config.SPREADSHEET_ID);
+      if (ss) {
+        Logger.log('Database already exists!');
+        Logger.log('Spreadsheet ID: ' + config.SPREADSHEET_ID);
+        Logger.log('Drive Folder ID: ' + config.DRIVE_FOLDER_ID);
+        Logger.log('To reconfigure, first clear APP_CONFIG in PropertiesService');
+        return {
+          spreadsheetId: config.SPREADSHEET_ID,
+          driveFolderId: config.DRIVE_FOLDER_ID,
+          alreadyExists: true
+        };
+      }
+    } catch (e) {
+      // Spreadsheet no longer exists, need to recreate
+      Logger.log('Existing spreadsheet not found, creating new one...');
+    }
+  }
+  
   // Create the spreadsheet
   const ss = SpreadsheetApp.create('Al-Aqsa-App-Database');
   const spreadsheetId = ss.getId();
@@ -45,6 +73,9 @@ function setupDatabase() {
   const folder = DriveApp.createFolder('Al-Aqsa-HRM-Uploads');
   const folderId = folder.getId();
   
+  // Store configuration in PropertiesService (single source of truth)
+  initConfig(spreadsheetId, folderId, 500);
+  
   // Log results
   Logger.log('='.repeat(60));
   Logger.log('DATABASE SETUP COMPLETE!');
@@ -52,14 +83,14 @@ function setupDatabase() {
   Logger.log('Spreadsheet ID: ' + spreadsheetId);
   Logger.log('Drive Folder ID: ' + folderId);
   Logger.log('');
-  Logger.log('UPDATE CONFIG in Code.gs:');
-  Logger.log('  SPREADSHEET_ID: "' + spreadsheetId + '"');
-  Logger.log('  DRIVE_FOLDER_ID: "' + folderId + '"');
+  Logger.log('Configuration stored in PropertiesService');
+  Logger.log('UPDATE CODE.gs is no longer needed - config is automatic');
   Logger.log('='.repeat(60));
   
   return {
     spreadsheetId: spreadsheetId,
-    driveFolderId: folderId
+    driveFolderId: folderId,
+    alreadyExists: false
   };
 }
 

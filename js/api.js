@@ -97,6 +97,77 @@ function checkPermission(role, module, action) {
     return modulePerms[action] === true;
 }
 
+// ============================================
+// ERROR HANDLING UTILITIES
+// ============================================
+
+/**
+ * Display error message to user
+ * @param {string} message - Error message to display
+ * @param {string} type - Error type (error, warning, info)
+ */
+function showError(message, type = 'error') {
+    // Try to use a toast notification if available
+    if (typeof showToast === 'function') {
+        showToast(message, type);
+        return;
+    }
+    
+    // Fallback to alert for critical errors
+    if (type === 'error') {
+        alert('Error: ' + message);
+    } else {
+        console.warn(type + ':', message);
+    }
+}
+
+/**
+ * Handle API error response and return user-friendly message
+ * @param {object} response - API response object
+ * @returns {string} User-friendly error message
+ */
+function getErrorMessage(response) {
+    if (!response) {
+        return 'An unknown error occurred. Please try again.';
+    }
+    
+    // Backend-provided error message
+    if (response.message) {
+        // Map backend errors to user-friendly messages
+        switch (response.error) {
+            case 'AUTH_REQUIRED':
+                return 'Your session has expired. Please log in again.';
+            case 'POST_REQUEST_ERROR':
+                return 'Request failed. Please check your connection and try again.';
+            case 'SERVER_ERROR':
+                return 'Server error. Please try again later.';
+            case 'PARSE_ERROR':
+                return 'Unable to connect to the server.';
+            case 'NETWORK_ERROR':
+            case 'FETCH_ERROR':
+                return 'Network error. Please check your internet connection.';
+            default:
+                return response.message;
+        }
+    }
+    
+    return 'An error occurred. Please try again.';
+}
+
+/**
+ * Check if error is auth-related and redirect to login
+ * @param {object} response - API response object
+ * @returns {boolean} True if auth error
+ */
+function handleAuthError(response) {
+    if (response && response.error === 'AUTH_REQUIRED') {
+        clearSession();
+        window.location.href = 'login.html';
+        return true;
+    }
+    return false;
+}
+
 /**
  * Get current user from session (mock - reads from localStorage in browser)
  * In real backend, this would verify JWT/session token
@@ -125,6 +196,7 @@ function unauthorizedResponse(action) {
 
 /**
  * Generic API request function
+ * HARDENED: Explicit method, redirect behavior, and error handling
  * @param {string} action - The action name to execute
  * @param {object} payload - The data payload for the request
  * @returns {Promise<object>} Response from backend or mock
@@ -137,10 +209,14 @@ async function request(action, payload = {}) {
             const session = getSessionUser();
             const token = session?.token || null;
             
+            // HARDENED: Explicit fetch options to prevent redirect issues
             const response = await fetch(BASE_URL, {
                 method: 'POST',
+                redirect: 'follow',  // Explicitly follow redirects (GAS uses 302)
+                mode: 'cors',       // Enable CORS
+                credentials: 'omit', // Don't send cookies (token is in body)
                 headers: {
-                    'Content-Type': 'text/plain',  // Required for CORS with GAS
+                    'Content-Type': 'text/plain;charset=utf-8',  // Required for CORS with GAS
                 },
                 body: JSON.stringify({
                     action: action,
@@ -149,15 +225,68 @@ async function request(action, payload = {}) {
                 })
             });
             
-            const result = await response.json();
+            // Parse response
+            let result;
+            try {
+                result = await response.json();
+            } catch (parseError) {
+                console.error('Failed to parse response:', parseError);
+                return {
+                    success: false,
+                    action: action,
+                    data: null,
+                    error: 'PARSE_ERROR',
+                    message: 'Failed to parse server response. The server may be down or returning invalid data.'
+                };
+            }
+            
+            // Surface backend errors clearly
+            if (!result.success) {
+                // Log the error for debugging
+                console.error('Backend error:', {
+                    action: action,
+                    error: result.error,
+                    message: result.message
+                });
+                
+                // Handle specific error types
+                if (result.error === 'AUTH_REQUIRED') {
+                    // Token expired or invalid - redirect to login
+                    if (action !== 'login') {
+                        console.warn('Authentication required, redirecting to login');
+                        // Don't auto-redirect, let the caller handle it
+                    }
+                }
+                
+                if (result.error === 'POST_REQUEST_ERROR') {
+                    console.error('POST body lost - possible redirect issue');
+                }
+                
+                if (result.error === 'SERVER_ERROR') {
+                    console.error('Server error:', result.message);
+                }
+            }
+            
             return result;
+            
         } catch (error) {
-            console.error('Backend request failed:', error);
+            console.error('Network request failed:', error);
+            
+            // Determine error type
+            let errorType = 'NETWORK_ERROR';
+            let errorMessage = 'Network error: ' + error.message;
+            
+            if (error.name === 'TypeError' && error.message.includes('fetch')) {
+                errorType = 'FETCH_ERROR';
+                errorMessage = 'Unable to connect to server. Please check your internet connection.';
+            }
+            
             return {
                 success: false,
                 action: action,
                 data: null,
-                message: 'Network error: ' + error.message
+                error: errorType,
+                message: errorMessage
             };
         }
     }
