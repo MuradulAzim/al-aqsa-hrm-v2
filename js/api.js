@@ -4,7 +4,7 @@
 // ============================================
 // BACKEND CONFIGURATION
 // ============================================
-const BASE_URL = 'https://script.google.com/macros/s/AKfycbzRtOhNfBA7EAn-_prsrHRYeSpbfcdVG8F-w9HOsyLd667f8Ka4KP6M-y9u08Q8Jp3nNg/exec';
+const BASE_URL = 'https://script.google.com/macros/s/AKfycbyQZU2PO7v-i0H0SB5S_Dk7abx649AEAWxCbKyBKFetYxcDjKnuy69NEMOrS9-oeRszwQ/exec';
 const USE_BACKEND = true;  // Set to false to use mock data for testing
 
 // ============================================
